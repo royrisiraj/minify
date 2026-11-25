@@ -1,0 +1,54 @@
+name: minify
+
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      # Local development only. Production must use independently managed credentials.
+      POSTGRES_USER: ${POSTGRES_USER:-minify}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-minify}
+      POSTGRES_DB: ${POSTGRES_DB:-minify}
+    ports:
+      - "127.0.0.1:${DATABASE_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  backend:
+    build: ./backend
+    environment:
+      APP_ENV: development
+      DEBUG: "false"
+      HOST: 0.0.0.0
+      PORT: "8000"
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-minify}:${POSTGRES_PASSWORD:-minify}@database:5432/${POSTGRES_DB:-minify}}
+      BASE_URL: http://localhost:${BACKEND_PORT:-8000}
+      FRONTEND_URL: http://localhost:${FRONTEND_PORT:-5173}
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:${BACKEND_PORT:-8000}/api/v1
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

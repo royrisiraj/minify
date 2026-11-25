@@ -1,0 +1,1 @@
+"""Minify application package."""
