@@ -11,6 +11,7 @@ from app.core.logging import log_failure
 class RequestMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         request_id = uuid4().hex
+        request.state.request_id = request_id
         started = perf_counter()
         try:
             response = await call_next(request)

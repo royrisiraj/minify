@@ -1,11 +1,9 @@
 import os
 from io import StringIO
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from alembic import command
-from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
@@ -70,19 +68,26 @@ def test_actual_database_readiness(postgres_settings):
         assert client.get("/health").status_code == 200
 
 
-def test_actual_alembic_upgrade_current_heads(postgres_settings, monkeypatch, database):
-    monkeypatch.setenv("DATABASE_URL", postgres_settings.database_url.get_secret_value())
-    monkeypatch.setenv("APP_ENV", "testing")
+def test_actual_alembic_upgrade_current_heads(migration_database):
+    database, _, config = migration_database
     output = StringIO()
-    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"), stdout=output)
+    config.stdout = output
+    # Independently retain the Phase 01 empty baseline assertion.
+    command.upgrade(config, "0001_foundation")
+    with database.engine.connect() as connection:
+        assert set(
+            connection.execute(
+                text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+            ).scalars()
+        ) == {"alembic_version"}
     command.upgrade(config, "head")
     command.current(config)
     command.heads(config)
-    assert output.getvalue().count("0001_foundation (head)") == 2
+    assert output.getvalue().count("0002_links (head)") == 2
     with database.engine.connect() as connection:
         tables = (
             connection.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))
             .scalars()
             .all()
         )
-        assert set(tables) == {"alembic_version"}
+        assert set(tables) == {"alembic_version", "links"}

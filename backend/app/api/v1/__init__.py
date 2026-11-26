@@ -1,4 +1,6 @@
 from fastapi import APIRouter
 
-# Future feature routers are registered here; Phase 01 has no business endpoints.
+from app.api.v1.links import router as links_router
+
 router = APIRouter(prefix="/api/v1")
+router.include_router(links_router)

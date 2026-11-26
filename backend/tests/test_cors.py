@@ -19,7 +19,7 @@ def test_preflight(client):
         },
     )
     assert response.status_code == 200
-    assert response.headers["access-control-allow-methods"] == "GET"
+    assert response.headers["access-control-allow-methods"] == "GET, POST"
 
 
 def test_disallowed_preflight(client):

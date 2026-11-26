@@ -1,4 +1,4 @@
-name: Foundation CI
+name: Application CI
 on:
   push:
     branches: [main]
@@ -42,6 +42,8 @@ jobs:
       - run: python -m pip check
       - run: ruff check .
       - run: ruff format --check .
+      - run: ruff check ../infrastructure
+      - run: ruff format --check ../infrastructure
       - run: alembic upgrade head
       - run: alembic current
       - run: alembic heads
@@ -78,11 +80,12 @@ jobs:
           docker compose exec -T backend python -c
           "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready', timeout=10)"
       - run: curl --fail http://localhost:5173
+      - run: python3 infrastructure/verify_stack.py create
       - name: Verify database persistence across normal shutdown
         run: |
           docker compose down
           docker compose up -d --wait --wait-timeout 120
-          docker compose exec -T backend python -c "from app.core.config import Settings; from app.database import Database; from sqlalchemy import text; db = Database(Settings()); connection = db.engine.connect(); assert connection.scalar(text('SELECT version_num FROM alembic_version')) == '0001_foundation'; connection.close(); db.dispose()"
+          python3 infrastructure/verify_stack.py verify
       - if: failure()
         run: docker compose logs
       - if: always()

@@ -26,6 +26,7 @@ services:
       DEBUG: "false"
       HOST: 0.0.0.0
       PORT: "8000"
+      DATABASE_TIMEOUT_SECONDS: ${DATABASE_TIMEOUT_SECONDS:-3}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-minify}:${POSTGRES_PASSWORD:-minify}@database:5432/${POSTGRES_DB:-minify}}
       BASE_URL: http://localhost:${BACKEND_PORT:-8000}
       FRONTEND_URL: http://localhost:${FRONTEND_PORT:-5173}

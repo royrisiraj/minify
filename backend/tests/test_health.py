@@ -51,9 +51,9 @@ def test_documentation_can_be_disabled(path):
         assert client.get(path).status_code == 404
 
 
-def test_no_business_routes_and_reserved_operational_paths(client):
+def test_versioned_links_and_reserved_operational_paths(client):
     assert client.get("/api/v1/health").status_code == 404
-    assert client.post("/api/v1/links", json={}).status_code == 404
+    assert client.post("/api/v1/links", json={}).status_code == 422
     assert {"health", "ready", "api", "docs", "redoc", "openapi.json"} <= RESERVED_PATHS
 
 

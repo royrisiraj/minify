@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getHealth } from '../services/api'
+import { Icon } from './Icon'
 
 type State = 'connecting' | 'operational' | 'unavailable'
 
@@ -42,14 +43,13 @@ export function Connectivity() {
   }
 
   return (
-    <section className="connection" aria-label="Backend connection">
-      <div>
-        <p className="eyebrow">Live service status</p>
+    <section className={`connection connection-${state}`} aria-label="Backend connection">
+      <div className="connection-summary">
         <p className="status" role="status" aria-live="polite">
           <span className={`status-dot ${state}`} aria-hidden="true" />
           {messages[state]}
         </p>
-        <p className="connection-note">
+        <p className="connection-note" id="connection-note">
           {state === 'operational'
             ? 'The API is responding to health checks.'
             : state === 'unavailable'
@@ -57,7 +57,8 @@ export function Connectivity() {
               : 'Checking the connection to the Minify API.'}
         </p>
       </div>
-      <button onClick={retry} disabled={state === 'connecting'}>
+      <button className="button-text connection-retry" onClick={retry} disabled={state === 'connecting'} aria-describedby="connection-note">
+        <Icon name="refresh" className={state === 'connecting' ? 'is-spinning' : ''} />
         {state === 'connecting' ? 'Checking…' : 'Check again'}
       </button>
     </section>

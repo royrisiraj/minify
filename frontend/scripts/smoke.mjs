@@ -88,7 +88,7 @@ try {
   await page.goto(webOrigin)
   assert.equal((await healthResponse).status(), 200)
   await page.getByRole('status').filter({ hasText: 'Backend operational' }).waitFor()
-  await page.getByRole('heading', { name: 'Shorter links. Smarter connections.' }).waitFor()
+  await page.getByRole('heading', { name: 'Less link. More impact.' }).waitFor()
   const artifactPath = resolve(frontend, '..', '.local')
   await mkdir(artifactPath, { recursive: true })
   await page.screenshot({ path: resolve(artifactPath, 'foundation-desktop.png'), fullPage: true })

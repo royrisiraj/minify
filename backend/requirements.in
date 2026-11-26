@@ -5,3 +5,4 @@ alembic==1.20.1
 pydantic==2.14.4
 pydantic-settings==2.16.3
 psycopg[binary]==3.3.9
+idna==3.20

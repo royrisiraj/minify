@@ -44,6 +44,6 @@ def test_unexpected_error_safe_logs_and_cors(app, client):
 
 
 def test_unknown_route_uses_error_contract(client):
-    response = client.get("/missing")
+    response = client.get("/missing/route")
     assert response.status_code == 404
     assert set(response.json()) == {"error"}

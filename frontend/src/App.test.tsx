@@ -5,14 +5,14 @@ import App from './App'
 
 afterEach(() => vi.unstubAllGlobals())
 
-it('renders branding, phase, and the loading state', () => {
+it('renders branding, product headline, and the loading state', () => {
   vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
   const view = render(<App />)
   expect(screen.getByRole('link', { name: 'Minify home' })).toBeInTheDocument()
-  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Shorter links.Smarter connections.')
-  expect(screen.getByText('Phase 01 — Foundation')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Less link.More impact.')
+  expect(screen.getByText(/Shorter links\.\s*Smarter connections\./)).toBeInTheDocument()
   expect(screen.getByRole('status')).toHaveTextContent('Connecting')
-  expect(screen.getByRole('button')).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Checking…' })).toBeDisabled()
   view.unmount()
 })
 

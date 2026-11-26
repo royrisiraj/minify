@@ -7,9 +7,10 @@ from starlette.concurrency import run_in_threadpool
 
 from app.api.router import router
 from app.core.config import Settings
-from app.core.exceptions import register_exception_handlers
+from app.core.exceptions import ErrorResponse, register_exception_handlers
 from app.core.logging import configure_logging
 from app.database import Database
+from app.middleware.body_limit import LinkBodyLimitMiddleware
 from app.middleware.requests import RequestMiddleware
 
 
@@ -38,17 +39,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url="/redoc" if settings.expose_docs else None,
         openapi_url="/openapi.json" if settings.expose_docs else None,
         swagger_ui_oauth2_redirect_url=None,
+        responses={status: {"model": ErrorResponse} for status in (403, 404, 413, 422, 500, 503)},
     )
     app.state.settings = settings
     register_exception_handlers(app)
     app.include_router(router)
+    app.add_middleware(LinkBodyLimitMiddleware)
     app.add_middleware(RequestMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[str(settings.frontend_url).rstrip("/")],
         allow_credentials=False,
-        allow_methods=["GET"],
-        allow_headers=["Accept"],
+        allow_methods=["GET", "POST"],
+        allow_headers=["Accept", "Content-Type"],
         expose_headers=["X-Request-ID"],
     )
     return app
