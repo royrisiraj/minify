@@ -1,6 +1,7 @@
 """Exercise the actual local Compose API and verify durable link persistence."""
 
 import argparse
+import errno
 import json
 import os
 import re
@@ -8,6 +9,7 @@ import subprocess
 import urllib.error
 import urllib.request
 from pathlib import Path
+from time import monotonic, sleep
 from urllib.parse import urlsplit
 from uuid import uuid4
 
@@ -19,13 +21,61 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def request(url, body=None):
+def request(url, body=None, *, timeout=10):
     data = None if body is None else json.dumps(body).encode()
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
     try:
-        return urllib.request.build_opener(NoRedirect).open(req, timeout=10)
+        return urllib.request.build_opener(NoRedirect).open(req, timeout=timeout)
     except urllib.error.HTTPError as response:
         return response
+
+
+def transient_connection(error):
+    return isinstance(error, (ConnectionError, TimeoutError)) or (
+        isinstance(error, OSError)
+        and error.errno
+        in {
+            errno.ECONNRESET,
+            errno.ECONNREFUSED,
+            errno.ECONNABORTED,
+            errno.ETIMEDOUT,
+            errno.EHOSTUNREACH,
+            errno.ENETUNREACH,
+        }
+    )
+
+
+def wait_ready(url, *, expected_status=200, timeout=30, attempt_timeout=3, interval=0.5):
+    """Retry safe startup GETs only; business requests/assertions are never retried."""
+    if min(timeout, attempt_timeout, interval) <= 0:
+        raise ValueError("Readiness timeouts and polling interval must be positive")
+    deadline = monotonic() + timeout
+    last_error = None
+    while (remaining := deadline - monotonic()) > 0:
+        try:
+            with request(url, timeout=min(attempt_timeout, remaining)) as response:
+                if response.status == expected_status:
+                    return
+                if response.status not in {408, 429, 500, 502, 503, 504}:
+                    raise RuntimeError(
+                        f"Readiness {url}: expected HTTP {expected_status}, got {response.status}"
+                    )
+                last_error = RuntimeError(f"HTTP {response.status}")
+        except urllib.error.URLError as error:
+            if not transient_connection(error.reason):
+                raise
+            last_error = error
+        except OSError as error:
+            if not transient_connection(error):
+                raise
+            last_error = error
+        remaining = deadline - monotonic()
+        if remaining > 0:
+            sleep(min(interval, remaining))
+    raise RuntimeError(
+        f"Readiness deadline ({timeout}s) exhausted for {url}; "
+        f"expected HTTP {expected_status}; last failure: {last_error}"
+    ) from last_error
 
 
 def verify_database(link, project):
@@ -78,9 +128,9 @@ def main():
             or parsed.path
         ):
             parser.error("Verification targets must be plain local HTTP origins")
-    assert request(args.api + "/health").status == 200
-    assert request(args.api + "/ready").status == 200
-    assert request(args.web).status == 200
+    wait_ready(args.api + "/health")
+    wait_ready(args.api + "/ready")
+    wait_ready(args.web)
     if args.action == "create":
         destination = (
             f"https://example.com/Verify%2FCase?first=1&first=2&probe={uuid4().hex}#section"
